@@ -107,6 +107,8 @@ pre{white-space:pre-wrap;font-family:var(--mono);font-size:13px;background:var(-
       <select id="title"><option value="">Any</option><option>Professor</option><option>Associate Professor</option><option value="res">Research track (研究员)</option></select>
       <label for="eng">English</label>
       <select id="eng"><option value="0">Any</option><option value="2" selected>Likely or high</option><option value="3">High only</option></select>
+      <label for="ai">AI in thesis topics (expected)</label>
+      <select id="ai"><option value="">Any</option><option value="noncore">Hide likely-AI topics</option><option value="none">Unlikely AI only</option></select>
       <label><input type="checkbox" id="sz" checked> Shenzhen campus only</label>
       <label><input type="checkbox" id="ug"> Mentions undergraduates on homepage</label>
       <label><input type="checkbox" id="unv" checked> Hide rows with unconfirmed title</label>
@@ -156,6 +158,7 @@ pre{white-space:pre-wrap;font-family:var(--mono);font-size:13px;background:var(-
 <li><b>Supervisor list:</b> the official list shared by the school (Tencent Docs, 116 rows).</li>
 <li><b>Profiles:</b> each supervisor's page on homepage.hit.edu.cn and the biography text it loads. These are self-descriptions and have not been checked independently.</li>
 <li><b>Research summaries and topic tags</b> are short English summaries written from those pages, not official text.</li>
+<li><b>AI in thesis topics</b> is a forecast for the bachelor graduation topics, since real topics appear only on 27 Nov. Supervisors usually give undergraduates topics from their own research, so the forecast follows it: "Likely AI" when the main field is machine learning, NLP, vision, agents or data mining; "Possibly AI" when AI is a side topic; "Unlikely AI" when it is not mentioned.</li>
 <li><b>English</b> is estimated from signs on the page (English bio, study or work abroad, teaching in English). It has not been tested.</li>
 <li><b>"Mentions undergraduates"</b> means the page invites undergraduates or lists undergraduate papers or awards.</li>
 <li><b>"Works with"</b> counts how often another supervisor's name appears in the publication list. It is approximate.</li>
@@ -172,6 +175,23 @@ const ENG={High:3,Likely:2,Possible:1,Unknown:0};
 const ENGTXT={High:["ok","likely good"],Likely:["ok","probably fine"],Possible:["warn","unclear"],Unknown:["warn","no evidence on homepage"]};
 const byN=Object.fromEntries(DATA.map(d=>[d.n,d]));
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const AISET=['ml','nlp','cv','agent','dm'];
+const AIOVR={60:'partly'};
+const AINOTE={
+  72:"Expect AI-related graduation topics. He teaches Database Systems, but his own work is machine learning for spatio-temporal data, so his thesis topics will most likely follow it.",
+  60:"Topics may be pure cryptography or consensus, but the lab also works on AI security and zero-knowledge proofs for large models, so some topics may involve AI.",
+  38:"Topics are mostly storage and operating systems; some may be storage for AI systems.",
+  75:"Topics are mostly storage; some may target LLM inference.",
+  63:"Some topics may use models to predict system failures.",
+  16:"Topics are systems work for training and serving machine-learning models."};
+function aiLevel(d){
+  if(AIOVR[d.n])return AIOVR[d.n];
+  if(!d.tags.length)return 'unknown';
+  const k=d.tags.filter(t=>AISET.includes(t)).length;
+  if(AISET.includes(d.tags[0])||k>=2)return 'core';
+  if(k||/\bAI\b|LLM|learning|large model|agent|neural/i.test(d.area))return 'partly';
+  return 'none';}
+const AITXT={core:['warn','Likely AI'],partly:['muted','Possibly AI'],none:['ok','Unlikely AI'],unknown:['muted','Unknown']};
 
 /* ---------- Finder ---------- */
 const topicsEl=document.getElementById('topics');
@@ -180,15 +200,16 @@ function pref(){const p={};TOPICS.forEach(([k])=>p[k]=+document.getElementById('
 function match(d,p){let s=0;d.tags.forEach((t,i)=>{s+=(p[t]||0)*(i===0?1.5:1);});return {s};}
 const BADROW=[25,102,115];
 function profHTML(d,sc,showScore){
-  const e=ENGTXT[d.eng];
+  const e=ENGTXT[d.eng],A=AITXT[aiLevel(d)],an=AINOTE[d.n];
   const co=d.co.filter(([m])=>!BADROW.includes(m)&&!BADROW.includes(d.n)).map(([m,c])=>`${byN[m].zh} ${esc(byN[m].en)} (${c})`).join(', ')||'none found';
   return `<details class="prof" id="p${d.n}"><summary>
    <span class="nm">${d.zh} <span>${esc(d.en)} · ${d.t}${d.ten?' (tenured)':''}</span></span>
    <span class="score">${showScore?(sc>0?'+'+sc:sc):Number(d.views).toLocaleString('en-US')+' views'}</span>
-   <span class="sub">${esc(d.area)}<br>${d.tags.map(t=>`<span class="tag">${TN[t]}</span>`).join('')}</span></summary>
+   <span class="sub">${esc(d.area)}<br>${d.tags.map(t=>`<span class="tag">${TN[t]}</span>`).join('')}<span class="tag ${A[0]}">Thesis topics: ${A[1]}</span></span></summary>
    <div class="body"><dl>
     <dt>Title</dt><dd>${d.t}${d.ten?', tenured (长聘)':''} · ${d.camp} campus</dd>
     <dt>Research</dt><dd>${esc(d.area)}</dd>
+    <dt>AI in thesis topics</dt><dd class="${A[0]}">${A[1]}${an?`<br><span class="muted">${esc(an)}</span>`:''}</dd>
     <dt>English</dt><dd class="${e[0]}">${e[1]}${d.engev.length?` <span class="muted">(${d.engev.join('; ')})</span>`:''}</dd>
     <dt>Undergraduates</dt><dd>${d.ug?'<span class="ok">Homepage invites undergraduates or lists their papers or awards</span>':'<span class="muted">Not mentioned on homepage</span>'}${d.abroad?'<br><span class="ok">Mentions sending students abroad for further study</span>':''}</dd>
     <dt>Homepage views</dt><dd>${Number(d.views).toLocaleString('en-US')}${d.pct!=null?` (more than ${d.pct}% of the list)`:''}</dd>
@@ -201,12 +222,14 @@ function profHTML(d,sc,showScore){
 }
 function render(){
   const p=pref(),q=document.getElementById('q').value.trim().toLowerCase(),title=document.getElementById('title').value,eng=+document.getElementById('eng').value,
-        sz=document.getElementById('sz').checked,ug=document.getElementById('ug').checked,unv=document.getElementById('unv').checked,sort=document.getElementById('sort').value;
+        sz=document.getElementById('sz').checked,ug=document.getElementById('ug').checked,unv=document.getElementById('unv').checked,sort=document.getElementById('sort').value,ai=document.getElementById('ai').value;
   const anyPref=Object.values(p).some(v=>v),likes=Object.values(p).some(v=>v>0);
   let rows=DATA.filter(d=>{
     if(sz&&d.camp!=='Shenzhen')return false;
     if(unv&&d.t==='Title not confirmed')return false;
     if(ug&&!d.ug)return false;
+    if(ai==='noncore'&&aiLevel(d)==='core')return false;
+    if(ai==='none'&&aiLevel(d)!=='none')return false;
     if(ENG[d.eng]<eng)return false;
     if(title==='res'&&!/Research/.test(d.t))return false;
     if(title&&title!=='res'&&d.t!==title)return false;
