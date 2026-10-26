@@ -70,13 +70,25 @@ code{font-family:var(--mono);font-size:13px;user-select:all}
 .halo{paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round}
 .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
 .form label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--muted)}
+.q{margin:0 0 14px;padding:10px 12px;border:1px solid var(--line);border-radius:6px}
+.q .qt{font-weight:600;margin-bottom:4px}
+.q .qa{font-size:12px;color:var(--muted);margin-left:6px;font-weight:400}
+.q label{display:flex;gap:8px;align-items:flex-start;padding:2px 0;font-size:14px}
+.q label input{margin-top:4px}
+.q .ex{font-size:13px;margin-top:6px}
+.kbar{display:grid;grid-template-columns:200px minmax(0,1fr) 60px;gap:8px;align-items:center;font-size:14px;margin:4px 0}
+.kbar .track{height:8px;background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.kbar .fill{height:100%;background:var(--next)}
+@media (max-width:560px){.kbar{grid-template-columns:120px minmax(0,1fr) 50px}}
+.res{border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin:8px 0}
+.res .why{font-size:13px;color:var(--muted);margin-top:4px}
 pre{white-space:pre-wrap;font-family:var(--mono);font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;margin:10px 0 6px;overflow-x:auto}
 </style>
 
 <main>
 <h1>HITSZ Supervisor Finder</h1>
 <p class="muted">For the 2024 cohort of the School of Computer Science and Technology choosing a graduation-project supervisor (毕设导师互选). It covers all 116 rows of the official supervisor list. Profiles were collected from homepage.hit.edu.cn on 23–25 October 2026.</p>
-<nav><a href="#rules">Rules and dates</a><a href="#finder">Find a supervisor</a><a href="#planner">Plan your three choices</a><a href="#email">First email</a><a href="#tips">Tips</a><a href="#data">About the data</a></nav>
+<nav><a href="#rules">Rules and dates</a><a href="#quiz">Quiz</a><a href="#finder">Find a supervisor</a><a href="#planner">Plan your three choices</a><a href="#email">First email</a><a href="#tips">Tips</a><a href="#data">About the data</a></nav>
 
 <h2 id="rules">Rules and dates</h2>
 <p>From the school's announcement in the cohort QQ group.</p>
@@ -96,6 +108,17 @@ pre{white-space:pre-wrap;font-family:var(--mono);font-size:13px;background:var(-
 <li>The topic must match the task book (任务书). The system compares your report and thesis titles with it. In principle the topic and supervisor cannot change after the mid-term check.</li>
 <li>Students who hope for 推免 are advised to pick the supervisor they want for their master's.</li>
 </ul>
+
+<h2 id="quiz">Quiz: what you know and what you like</h2>
+<p>Part 1 checks your basics in each field (15 questions). Part 2 asks about your preferences (10 questions). At the end you get your strong fields and the supervisors who fit you best. Answers stay in your browser and are not sent anywhere. Skip any question you do not want to answer.</p>
+<form id="quizForm" onsubmit="return false">
+  <h3>Part 1. Knowledge</h3>
+  <div id="kq"></div>
+  <h3>Part 2. Preferences</h3>
+  <div id="pq"></div>
+  <div class="row" style="margin-top:12px"><button type="button" id="quizGo">See my results</button><button type="button" id="quizReset">Clear answers</button></div>
+</form>
+<div id="quizOut" hidden></div>
 
 <h2 id="finder">Find a supervisor</h2>
 <p>Mark the topics you like or want to avoid. The list is sorted by how well each supervisor matches. Click a name for details.</p>
@@ -245,6 +268,87 @@ function render(){
 document.getElementById('filters').addEventListener('input',render);
 document.getElementById('reset').addEventListener('click',()=>{document.getElementById('filters').reset();render();});
 render();
+
+/* ---------- Quiz ---------- */
+const AREA={alg:"Algorithms and theory",db:"Databases",net:"Networks",sys:"Systems and Linux",cloud:"Cloud and distributed systems",sec:"Security and cryptography",ml:"Machine learning"};
+const KQ=[
+ {t:'alg',q:'How hard is finding a maximum clique in a general graph?',o:['O(n log n)','O(n²)','O(n³)','No polynomial algorithm is known; the problem is NP-hard'],a:3,e:'Maximum clique is NP-hard. Exact solvers use branch-and-bound with pruning.'},
+ {t:'alg',q:'In branch-and-bound, what is an upper bound used for?',o:['To sort the input','To cut off a branch that cannot beat the best solution found so far','To pick a random start','To store visited nodes'],a:1,e:'If the best a branch could ever reach is not better than the current best, the whole branch is skipped.'},
+ {t:'db',q:'What does the "I" in ACID stand for?',o:['Indexing','Integrity','Isolation','Immutability'],a:2,e:'Isolation: concurrent transactions behave as if they ran one after another.'},
+ {t:'db',q:'Which index structure do relational databases usually use for range queries (e.g. age BETWEEN 20 AND 30)?',o:['Hash index','B+ tree','Bloom filter','Linked list'],a:1,e:'A B+ tree keeps keys sorted, so a range is one walk along the leaves. A hash index only answers exact matches.'},
+ {t:'net',q:'Which protocol gives reliable, in-order delivery of a byte stream?',o:['UDP','IP','TCP','ICMP'],a:2,e:'TCP adds sequence numbers, acknowledgements and retransmission on top of IP.'},
+ {t:'net',q:'What does the TCP three-way handshake (SYN, SYN-ACK, ACK) do?',o:['Encrypts the connection','Opens a connection and agrees on starting sequence numbers','Finds the route to the server','Closes the connection'],a:1,e:'Both sides learn each other’s initial sequence numbers and confirm they can reach each other.'},
+ {t:'sys',q:'What does fork() return in the child process?',o:['The parent’s PID','The child’s PID','0','-1'],a:2,e:'fork() returns 0 in the child and the child’s PID in the parent (-1 on error).'},
+ {t:'sys',q:'What are Linux cgroups used for?',o:['Grouping files into folders','Limiting and accounting CPU, memory and I/O for groups of processes','Managing user passwords','Scheduling cron jobs'],a:1,e:'Containers use cgroups for resource limits and namespaces for isolation.'},
+ {t:'sys',q:'In a 5-node Raft cluster, how many nodes must store a log entry before it is committed?',o:['1 (the leader)','2','3','5'],a:2,e:'A majority (3 of 5) is needed, so the cluster survives 2 failed nodes.'},
+ {t:'cloud',q:'By the CAP theorem, during a network partition a distributed store must choose between:',o:['Speed and cost','Consistency and availability','Security and performance','Latency and throughput'],a:1,e:'With a partition, a node either refuses requests (keeps consistency) or answers with possibly stale data (keeps availability).'},
+ {t:'cloud',q:'What does a container share with its host that a virtual machine does not?',o:['The disk','The network card','The kernel','Nothing'],a:2,e:'Containers are isolated processes on the host kernel; a VM runs its own kernel on virtual hardware.'},
+ {t:'sec',q:'What is Diffie-Hellman key exchange for?',o:['Signing documents','Agreeing on a shared secret over an insecure channel','Hashing passwords','Compressing data'],a:1,e:'Both sides derive the same secret without ever sending it.'},
+ {t:'sec',q:'Why add a random salt before hashing passwords?',o:['To make hashing faster','So identical passwords get different hashes and precomputed tables do not work','To make passwords shorter','To allow decryption later'],a:1,e:'A salt defeats rainbow tables and hides users who share a password.'},
+ {t:'ml',q:'A model scores 99% on training data and 60% on new data. This is:',o:['Underfitting','Overfitting','Data leakage is impossible here','Normal convergence'],a:1,e:'It memorised the training set and does not generalise.'},
+ {t:'ml',q:'In gradient descent, parameters move:',o:['Along the gradient','Opposite to the gradient','Randomly','Towards zero'],a:1,e:'The gradient points uphill; to reduce the loss we step the other way.'}
+];
+const AIT=['ml','nlp','cv','agent','dm'];
+const PQ=[
+ {q:'Which of these would you enjoy most?',o:[['Proving why an algorithm is correct and fast',{alg:2,db:.5}],['Making a service run reliably on Linux servers',{cloud:2,sys:1.5}],['Finding and fixing weaknesses in protocols',{sec:2,net:1}],['Training a model and watching it improve',{ml:2,nlp:1,cv:1}]]},
+ {q:'What should your thesis produce?',o:[['A faster algorithm with a proof',{alg:2,db:1}],['A working system deployed and tested',{sys:2,cloud:1.5,se:.5}],['A protocol with a security analysis',{sec:2,net:1}],['A model that beats a benchmark',{ml:2,nlp:1,cv:1}],['A tool people use, such as a better developer tool',{se:2,hci:1}]]},
+ {q:'Which course did you like most?',o:[['Algorithms or data structures',{alg:2}],['Databases',{db:2,dm:.5}],['Computer networks',{net:2}],['Operating systems or computer systems',{sys:2}],['Machine learning',{ml:2}],['Software engineering',{se:2}]]},
+ {q:'How do you feel about AI in your thesis?',ai:true,o:[['I want to avoid it',-2],['Fine as a small side part',-.6],['No preference',0],['I want an AI topic',2]]},
+ {q:'Math and proofs, or code?',o:[['Mostly math and proofs',{alg:1.5,sec:.5}],['A balance',{}],['Mostly code',{sys:1,cloud:1,se:1}]]},
+ {q:'Which language would you most like to work in?',o:[['C or C++',{alg:.5,sys:1}],['Rust or Go',{sys:1,cloud:1,net:.5}],['Python',{ml:1,dm:1}],['Java',{se:1}],['No preference',{}]]},
+ {q:'Which application area interests you most?',o:[['Data, graphs and databases',{db:1.5,alg:.5}],['Infrastructure and cloud',{cloud:1.5,sys:.5}],['Security and privacy',{sec:1.5}],['Language, images or video',{nlp:1,cv:1}],['Biology and medicine',{bio:1.5}],['People and interfaces',{hci:1.5}]]},
+ {q:'What is your plan after the bachelor’s?',goal:true,o:[['Master’s or PhD abroad','abroad'],['Master’s in China (推免 or exam)','cn'],['Industry job','job'],['Not sure yet','none']]},
+ {q:'Must the supervisor communicate with you in English?',eng:true,o:[['Yes',2],['It would help',1],['No',0]]},
+ {q:'Are you fine competing for the most popular supervisors?',pop:true,o:[['Yes',0],['I prefer less crowded ones',1]]}
+];
+document.getElementById('kq').innerHTML=KQ.map((k,i)=>`<div class="q" id="kqb${i}"><div class="qt">${i+1}. ${esc(k.q)}<span class="qa">${AREA[k.t]}</span></div>${k.o.map((o,j)=>`<label><input type="radio" name="k${i}" value="${j}"> ${esc(o)}</label>`).join('')}<div class="ex" id="kex${i}" hidden></div></div>`).join('');
+document.getElementById('pq').innerHTML=PQ.map((p,i)=>`<div class="q"><div class="qt">${i+1}. ${esc(p.q)}</div>${p.o.map((o,j)=>`<label><input type="radio" name="p${i}" value="${j}"> ${esc(o[0])}</label>`).join('')}</div>`).join('');
+function radio(n){const r=document.querySelector(`input[name="${n}"]:checked`);return r?+r.value:null;}
+let lastW=null,lastEng=0;
+function quiz(){
+  const per={};Object.keys(AREA).forEach(a=>per[a]={ok:0,n:0});
+  KQ.forEach((k,i)=>{const v=radio('k'+i);const ex=document.getElementById('kex'+i);
+    if(v===null){ex.hidden=true;return;}
+    per[k.t].n++;const ok=v===k.a;if(ok)per[k.t].ok++;
+    ex.hidden=false;ex.className='ex '+(ok?'ok':'bad');ex.textContent=(ok?'Correct. ':'Not quite. Answer: '+k.o[k.a]+'. ')+k.e;});
+  const w={};TOPICS.forEach(([t])=>w[t]=0);let ai=0,goal='none',eng=0,pop=0;
+  PQ.forEach((p,i)=>{const v=radio('p'+i);if(v===null)return;const o=p.o[v][1];
+    if(p.ai)ai=o;else if(p.goal)goal=o;else if(p.eng)eng=o;else if(p.pop)pop=o;else Object.entries(o).forEach(([t,x])=>w[t]+=x);});
+  AIT.forEach(t=>w[t]+=ai*(t==='dm'?.6:1));
+  Object.entries(per).forEach(([t,s])=>{if(s.n)w[t]+=1.5*(s.ok/s.n-.5);});
+  lastW=w;lastEng=eng;
+  const rows=DATA.filter(d=>d.camp==='Shenzhen'&&d.t!=='Title not confirmed'&&![25,102,115].includes(d.n)&&d.tags.length).map(d=>{
+    let s=0;d.tags.forEach((t,i)=>s+=w[t]*(i===0?1.5:1));
+    const why=[];const good=d.tags.filter(t=>w[t]>.9).map(t=>TN[t]);if(good.length)why.push('Matches: '+good.join(', '));
+    if(eng){s+=eng*.8*(ENG[d.eng]-1.5);}
+    if(goal==='abroad'){s+=(d.abroad?1:0)+(d.ug?1:0);if(d.abroad)why.push('sends students abroad');}
+    if(goal==='cn'&&d.ug){s+=1;}
+    if(d.ug)why.push('takes undergraduates');
+    if(pop&&d.pct!=null)s-=pop*(d.pct/100)*1.5;
+    return {d,s,why};}).sort((a,b)=>b.s-a.s).slice(0,8);
+  const out=document.getElementById('quizOut');out.hidden=false;
+  const answered=Object.values(per).reduce((a,s)=>a+s.n,0);
+  out.innerHTML=`<h3>Your knowledge (${answered} of ${KQ.length} answered)</h3>`+
+    Object.entries(per).map(([t,s])=>`<div class="kbar"><span>${AREA[t]}</span><span class="track"><span class="fill" style="width:${s.n?Math.round(100*s.ok/s.n):0}%;display:block"></span></span><span class="muted">${s.n?s.ok+' / '+s.n:'–'}</span></div>`).join('')+
+    `<p class="small muted">Wrong answers show the explanation under each question above.</p>
+    <h3>Supervisors who fit you best</h3>`+
+    rows.map((r,i)=>{const d=r.d,A=AITXT[aiLevel(d)],e=ENGTXT[d.eng];return `<div class="res"><b>${i+1}. ${d.zh} ${esc(d.en)}</b> <span class="muted">· ${d.t}</span> <a href="${esc(d.url)}" target="_blank" rel="noopener">Homepage</a>
+      <div class="small">${esc(d.area)}</div>
+      <div><span class="tag ${A[0]}">Thesis topics: ${A[1]}</span><span class="tag ${e[0]}">English: ${e[1]}</span></div>
+      <div class="why">${esc(r.why.join(' · ')||'General fit')}</div></div>`;}).join('')+
+    `<div class="row" style="margin-top:10px"><button type="button" id="quizApply">Use my answers in the finder</button></div>
+    <p class="small muted">This is a rough match from homepage keywords, not advice. Read each homepage before you write to anyone.</p>`;
+  document.getElementById('quizApply').addEventListener('click',applyQuiz);
+  out.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function applyQuiz(){
+  if(!lastW)return;
+  TOPICS.forEach(([t])=>{document.getElementById('t_'+t).value=lastW[t]>=1.5?'2':lastW[t]<=-1?'-2':'0';});
+  document.getElementById('eng').value=lastEng>=2?'2':'0';
+  render();document.getElementById('finder').scrollIntoView({behavior:'smooth'});
+}
+document.getElementById('quizGo').addEventListener('click',quiz);
+document.getElementById('quizReset').addEventListener('click',()=>{document.getElementById('quizForm').reset();document.querySelectorAll('[id^=kex]').forEach(x=>x.hidden=true);document.getElementById('quizOut').hidden=true;});
 
 /* ---------- Planner ---------- */
 const opts=DATA.filter(d=>d.t!=='Title not confirmed'&&!BADROW.includes(d.n)).slice().sort((a,b)=>a.en.localeCompare(b.en)).map(d=>`<option value="${d.n}">${esc(d.en)} ${d.zh}</option>`).join('');
