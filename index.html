@@ -50,6 +50,7 @@ details.prof summary::-webkit-details-marker{display:none}
 details.prof summary:hover{background:var(--hi)}
 .nm{font-weight:600}
 .nm span{font-weight:400;color:var(--muted)}
+.nm .hp{font-weight:400;font-size:13px;margin-left:6px;white-space:nowrap}
 .score{font-family:var(--mono);font-size:13px;color:var(--muted);text-align:right}
 .sub{grid-column:1/-1;font-size:13px;color:var(--muted)}
 .tag{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:3px;padding:0 5px;margin:2px 4px 0 0;color:var(--fg)}
@@ -173,6 +174,7 @@ const TOPICS=[["alg","Algorithms and theory"],["db","Databases and data manageme
 const TN=Object.fromEntries(TOPICS);
 const ENG={High:3,Likely:2,Possible:1,Unknown:0};
 const ENGTXT={High:["ok","likely good"],Likely:["ok","probably fine"],Possible:["warn","unclear"],Unknown:["warn","no evidence on homepage"]};
+DATA.forEach(d=>{d.url=d.url.replace(/^(https?):(?!\/\/)/,'$1://');});
 const byN=Object.fromEntries(DATA.map(d=>[d.n,d]));
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const AISET=['ml','nlp','cv','agent','dm'];
@@ -203,9 +205,9 @@ function profHTML(d,sc,showScore){
   const e=ENGTXT[d.eng],A=AITXT[aiLevel(d)],an=AINOTE[d.n];
   const co=d.co.filter(([m])=>!BADROW.includes(m)&&!BADROW.includes(d.n)).map(([m,c])=>`${byN[m].zh} ${esc(byN[m].en)} (${c})`).join(', ')||'none found';
   return `<details class="prof" id="p${d.n}"><summary>
-   <span class="nm">${d.zh} <span>${esc(d.en)} · ${d.t}${d.ten?' (tenured)':''}</span></span>
+   <span class="nm">${d.zh} <span>${esc(d.en)} · ${d.t}${d.ten?' (tenured)':''}</span> <a class="hp" href="${esc(d.url)}" target="_blank" rel="noopener">Homepage</a></span>
    <span class="score">${showScore?(sc>0?'+'+sc:sc):Number(d.views).toLocaleString('en-US')+' views'}</span>
-   <span class="sub">${esc(d.area)}<br>${d.tags.map(t=>`<span class="tag">${TN[t]}</span>`).join('')}<span class="tag ${A[0]}">Thesis topics: ${A[1]}</span></span></summary>
+   <span class="sub">${esc(d.area)}<br>${d.tags.map(t=>`<span class="tag">${TN[t]}</span>`).join('')}<span class="tag ${A[0]}">Thesis topics: ${A[1]}</span><span class="tag ${e[0]}">English: ${e[1]}</span></span></summary>
    <div class="body"><dl>
     <dt>Title</dt><dd>${d.t}${d.ten?', tenured (长聘)':''} · ${d.camp} campus</dd>
     <dt>Research</dt><dd>${esc(d.area)}</dd>
@@ -308,5 +310,6 @@ ${v('e_name')}, ${v('e_id')}`;
 }
 document.querySelector('.form').addEventListener('input',mail);document.getElementById('e_en').addEventListener('change',mail);mail();
 document.getElementById('copyMail').addEventListener('click',()=>{navigator.clipboard.writeText(document.getElementById('mail').textContent).then(()=>document.getElementById('copyMsg').textContent='Copied.').catch(()=>document.getElementById('copyMsg').textContent='Copy failed. Select the text and copy it manually.');});
+document.addEventListener('click',e=>{if(e.target.closest('a.hp'))e.stopPropagation();},true);
 document.addEventListener('click',e=>{const b=e.target.closest('button.cp');if(!b)return;e.preventDefault();navigator.clipboard.writeText(b.dataset.copy).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1500);}).catch(()=>{b.textContent='Select manually';});});
 </script>
